@@ -1,5 +1,8 @@
 package com.superngb.cardservice.domain;
 
+import com.superngb.cardservice.client.BoardServiceClient;
+import com.superngb.cardservice.client.TaskServiceClient;
+import com.superngb.cardservice.client.UserServiceClient;
 import com.superngb.cardservice.entity.Card;
 import com.superngb.cardservice.model.CardDtoModel;
 import com.superngb.cardservice.model.CardPostModel;
@@ -16,23 +19,30 @@ public class CardInteractor implements CardInputBoundary {
 
     private final CardDataAccess cardDataAccess;
     private final CardOutputBoundary cardOutputBoundary;
+    private final UserServiceClient userServiceClient;
+    private final BoardServiceClient boardServiceClient;
+    private final TaskServiceClient taskServiceClient;
 
-    public CardInteractor(CardDataAccess cardDataAccess, CardOutputBoundary cardOutputBoundary) {
+    public CardInteractor(CardDataAccess cardDataAccess,
+                          CardOutputBoundary cardOutputBoundary,
+                          UserServiceClient userServiceClient,
+                          BoardServiceClient boardServiceClient,
+                          TaskServiceClient taskServiceClient) {
         this.cardDataAccess = cardDataAccess;
         this.cardOutputBoundary = cardOutputBoundary;
+        this.userServiceClient = userServiceClient;
+        this.boardServiceClient = boardServiceClient;
+        this.taskServiceClient = taskServiceClient;
     }
 
-    //TODO проверка на существование creator (запрос в user-service)
-    //TODO проверка на существование board (запрос в board-service)
     @Override
     public CardDtoModel createCard(CardPostModel cardPostModel) {
-        if (cardPostModel == null
-                || cardPostModel.getName() == null
-                || cardPostModel.getBoardId() == null
-                || cardPostModel.getCreatorId() == null) {
+        if (!userServiceClient.userExists(cardPostModel.getCreatorId())) {
             return cardOutputBoundary.prepareFailPostCardView();
         }
-
+        if (!boardServiceClient.boardExists(cardPostModel.getBoardId())) {
+            return cardOutputBoundary.prepareFailPostCardView();
+        }
         return cardOutputBoundary.prepareSuccessPostCardView(CardDtoModel.mapper(
                 cardDataAccess.save(Card.builder()
                         .name(cardPostModel.getName())
@@ -77,12 +87,25 @@ public class CardInteractor implements CardInputBoundary {
         }
     }
 
-    //TODO удаление tasks по удалению card (запрос в task-service)
     @Override
     public CardDtoModel deleteCard(Long id) {
-        Card card = cardDataAccess.findById(id);
-        return (card == null)
-                ? cardOutputBoundary.prepareFailDeleteCardView()
-                : cardOutputBoundary.prepareSuccessDeleteCardView(CardDtoModel.mapper(card));
+        Card card = cardDataAccess.deleteById(id);
+        if (card == null){
+            return cardOutputBoundary.prepareFailDeleteCardView();
+        }
+        taskServiceClient.deleteTasksByCard(id);
+        return cardOutputBoundary.prepareSuccessDeleteCardView(CardDtoModel.mapper(card));
+    }
+
+    @Override
+    public void deleteCardsByBoard(Long id) {
+        cardDataAccess.findCardsByBoardId(id).forEach(card -> cardDataAccess.deleteById(card.getId()));
+    }
+
+    @Override
+    public boolean cardExists(Long id) {
+        return (cardDataAccess.findById(id) != null)
+                ? cardOutputBoundary.prepareCardExistsView()
+                : cardOutputBoundary.prepareCardDoesNotExistView();
     }
 }

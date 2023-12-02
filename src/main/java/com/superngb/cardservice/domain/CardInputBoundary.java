@@ -15,4 +15,6 @@ public interface CardInputBoundary {
     List<CardDtoModel> getCardsByBoard(Long id);
     CardDtoModel updateCard(CardUpdateModel cardUpdateModel);
     CardDtoModel deleteCard(Long id);
+    void deleteCardsByBoard(Long id);
+    boolean cardExists(Long id);
 }

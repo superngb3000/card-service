@@ -52,4 +52,14 @@ public class CardPresenter implements CardOutputBoundary {
     public List<CardDtoModel> convertCard(List<CardDtoModel> modelList) {
         return modelList;
     }
+
+    @Override
+    public boolean prepareCardExistsView() {
+        return true;
+    }
+
+    @Override
+    public boolean prepareCardDoesNotExistView() {
+        return false;
+    }
 }

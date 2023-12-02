@@ -17,4 +17,6 @@ public interface CardOutputBoundary {
     CardDtoModel prepareSuccessDeleteCardView(CardDtoModel model);
     CardDtoModel prepareFailDeleteCardView();
     List<CardDtoModel> convertCard(List<CardDtoModel> modelList);
+    boolean prepareCardExistsView();
+    boolean prepareCardDoesNotExistView();
 }
