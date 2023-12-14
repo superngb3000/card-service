@@ -7,6 +7,9 @@ import com.superngb.cardservice.entity.Card;
 import com.superngb.cardservice.model.CardDtoModel;
 import com.superngb.cardservice.model.CardPostModel;
 import com.superngb.cardservice.model.CardUpdateModel;
+import com.superngb.cardservice.model.ResponseModel;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,66 +21,70 @@ import java.util.function.Supplier;
 public class CardInteractor implements CardInputBoundary {
 
     private final CardDataAccess cardDataAccess;
-    private final CardOutputBoundary cardOutputBoundary;
     private final UserServiceClient userServiceClient;
     private final BoardServiceClient boardServiceClient;
     private final TaskServiceClient taskServiceClient;
 
     public CardInteractor(CardDataAccess cardDataAccess,
-                          CardOutputBoundary cardOutputBoundary,
                           UserServiceClient userServiceClient,
                           BoardServiceClient boardServiceClient,
                           TaskServiceClient taskServiceClient) {
         this.cardDataAccess = cardDataAccess;
-        this.cardOutputBoundary = cardOutputBoundary;
         this.userServiceClient = userServiceClient;
         this.boardServiceClient = boardServiceClient;
         this.taskServiceClient = taskServiceClient;
     }
 
     @Override
-    public CardDtoModel createCard(CardPostModel cardPostModel) {
-        if (!userServiceClient.userExists(cardPostModel.getCreatorId())) {
-            return cardOutputBoundary.prepareFailPostCardView();
+    public ResponseModel<?> createCard(CardPostModel cardPostModel) {
+        ResponseEntity<?> getCreatorResponse = userServiceClient.getUser(cardPostModel.getCreatorId());
+        if (!getCreatorResponse.getStatusCode().equals(HttpStatus.valueOf(200))) {
+            return ResponseModel.builder().code(403).body("User with userId = " + cardPostModel.getCreatorId().toString() + " does not exist").build();
         }
-        if (!boardServiceClient.boardExists(cardPostModel.getBoardId())) {
-            return cardOutputBoundary.prepareFailPostCardView();
+        ResponseEntity<?> getBoardResponse = boardServiceClient.getBoard(cardPostModel.getBoardId());
+        if (!getBoardResponse.getStatusCode().equals(HttpStatus.valueOf(200))) {
+            return ResponseModel.builder().code(403).body("Board with boardId = " + cardPostModel.getBoardId().toString() + " does not exist").build();
         }
-        return cardOutputBoundary.prepareSuccessPostCardView(CardDtoModel.mapper(
-                cardDataAccess.save(Card.builder()
-                        .name(cardPostModel.getName())
-                        .boardId(cardPostModel.getBoardId())
-                        .creatorId(cardPostModel.getCreatorId())
-                        .build())));
+        return ResponseModel.builder().code(200).body(
+                CardDtoModel.mapper(
+                        cardDataAccess.save(Card.builder()
+                                .name(cardPostModel.getName())
+                                .boardId(cardPostModel.getBoardId())
+                                .creatorId(cardPostModel.getCreatorId())
+                                .build())
+                )
+        ).build();
     }
 
-
     @Override
-    public CardDtoModel getCard(Long id) {
+    public ResponseModel<?> getCard(Long id) {
         Card card = cardDataAccess.findById(id);
         return (card == null)
-                ? cardOutputBoundary.prepareFailGetCardView()
-                : cardOutputBoundary.prepareSuccessGetCardView(CardDtoModel.mapper(card));
+                ? ResponseModel.builder().code(404).body("Card with cardId = " + id.toString() + " not found").build()
+                : ResponseModel.builder().code(200).body(CardDtoModel.mapper(card)).build();
     }
 
     @Override
-    public List<CardDtoModel> getCards() {
-        return cardOutputBoundary.convertCard(CardDtoModel.mapper(cardDataAccess.getCards()));
+    public ResponseModel<?> getCards() {
+        return ResponseModel.builder().code(200).body(CardDtoModel.mapper(cardDataAccess.getCards())).build();
     }
 
     @Override
-    public List<CardDtoModel> getCardsByBoard(Long id) {
-        return cardOutputBoundary.convertCard(CardDtoModel.mapper(cardDataAccess.findCardsByBoardId(id)));
+    public ResponseModel<?> getCardsByBoard(Long id) {
+        List<Card> cardList = cardDataAccess.findCardsByBoardId(id);
+        return (cardList == null)
+                ? ResponseModel.builder().code(404).body("There are no cards with board with boardId = " + id.toString()).build()
+                : ResponseModel.builder().code(200).body(CardDtoModel.mapper(cardList)).build();
     }
 
     @Override
-    public CardDtoModel updateCard(CardUpdateModel cardUpdateModel) {
+    public ResponseModel<?> updateCard(CardUpdateModel cardUpdateModel) {
         Card cardById = cardDataAccess.findById(cardUpdateModel.getId());
-        if (cardById == null){
-            return cardOutputBoundary.prepareFailUpdateCardView();
+        if (cardById == null) {
+            return ResponseModel.builder().code(404).body("Card with cardId = " + cardUpdateModel.getId().toString() + " not found").build();
         }
         updateFieldIfNotNull(cardUpdateModel.getName(), cardById::getName, cardById::setName);
-        return cardOutputBoundary.prepareSuccessUpdateCardView(CardDtoModel.mapper(cardDataAccess.save(cardById)));
+        return ResponseModel.builder().code(200).body(CardDtoModel.mapper(cardDataAccess.save(cardById))).build();
     }
 
     private <T> void updateFieldIfNotNull(T newValue, Supplier<T> currentValueSupplier, Consumer<T> updateFunction) {
@@ -88,24 +95,21 @@ public class CardInteractor implements CardInputBoundary {
     }
 
     @Override
-    public CardDtoModel deleteCard(Long id) {
+    public ResponseModel<?> deleteCard(Long id) {
         Card card = cardDataAccess.deleteById(id);
-        if (card == null){
-            return cardOutputBoundary.prepareFailDeleteCardView();
+        if (card == null) {
+            return ResponseModel.builder().code(404).body("Card with cardId = " + id.toString() + " not found").build();
         }
         taskServiceClient.deleteTasksByCard(id);
-        return cardOutputBoundary.prepareSuccessDeleteCardView(CardDtoModel.mapper(card));
+        return ResponseModel.builder().code(200).body(CardDtoModel.mapper(card)).build();
     }
 
     @Override
-    public void deleteCardsByBoard(Long id) {
+    public ResponseModel<?> deleteCardsByBoard(Long id) {
         cardDataAccess.findCardsByBoardId(id).forEach(card -> cardDataAccess.deleteById(card.getId()));
-    }
-
-    @Override
-    public boolean cardExists(Long id) {
-        return (cardDataAccess.findById(id) != null)
-                ? cardOutputBoundary.prepareCardExistsView()
-                : cardOutputBoundary.prepareCardDoesNotExistView();
+        List<Card> cardList = cardDataAccess.findCardsByBoardId(id);
+        return (cardList == null)
+                ? ResponseModel.builder().code(403).body("There are no cards with board with boardId = " + id.toString()).build()
+                : ResponseModel.builder().code(200).body(CardDtoModel.mapper(cardList)).build();
     }
 }

@@ -1,13 +1,14 @@
 package com.superngb.cardservice.controller;
 
 import com.superngb.cardservice.domain.CardInputBoundary;
-import com.superngb.cardservice.model.CardDtoModel;
 import com.superngb.cardservice.model.CardPostModel;
 import com.superngb.cardservice.model.CardUpdateModel;
+import com.superngb.cardservice.model.ResponseModel;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 
 @RestController
 @RequestMapping("/")
@@ -20,42 +21,44 @@ public class CardController {
     }
 
     @PostMapping
-    public CardDtoModel postCard(@RequestBody @Valid CardPostModel model) {
-        return cardInputBoundary.createCard(model);
+    public ResponseEntity<?> postCard(@RequestBody @Valid CardPostModel model) {
+        ResponseModel<?> response = cardInputBoundary.createCard(model);
+        return new ResponseEntity<>(response.getBody(), HttpStatus.valueOf(response.getCode()));
     }
 
     @GetMapping("/{id}")
-    public CardDtoModel getCard(@PathVariable Long id) {
-        return cardInputBoundary.getCard(id);
+    public ResponseEntity<?> getCard(@PathVariable Long id) {
+        ResponseModel<?> response = cardInputBoundary.getCard(id);
+        return new ResponseEntity<>(response.getBody(), HttpStatus.valueOf(response.getCode()));
     }
 
     @GetMapping
-    public List<CardDtoModel> getCards() {
-        return cardInputBoundary.getCards();
+    public ResponseEntity<?> getCards() {
+        ResponseModel<?> response = cardInputBoundary.getCards();
+        return new ResponseEntity<>(response.getBody(), HttpStatus.valueOf(response.getCode()));
     }
 
     @GetMapping("board/{id}")
-    public List<CardDtoModel> getCardsByBoard(@PathVariable Long id) {
-        return cardInputBoundary.getCardsByBoard(id);
+    public ResponseEntity<?> getCardsByBoard(@PathVariable Long id) {
+        ResponseModel<?> response = cardInputBoundary.getCardsByBoard(id);
+        return new ResponseEntity<>(response.getBody(), HttpStatus.valueOf(response.getCode()));
     }
 
     @PutMapping
-    public CardDtoModel updateCard(@RequestBody @Valid CardUpdateModel model) {
-        return cardInputBoundary.updateCard(model);
+    public ResponseEntity<?> updateCard(@RequestBody @Valid CardUpdateModel model) {
+        ResponseModel<?> response = cardInputBoundary.updateCard(model);
+        return new ResponseEntity<>(response.getBody(), HttpStatus.valueOf(response.getCode()));
     }
 
     @DeleteMapping("/{id}")
-    public CardDtoModel deleteCard(@PathVariable Long id) {
-        return cardInputBoundary.deleteCard(id);
+    public ResponseEntity<?> deleteCard(@PathVariable Long id) {
+        ResponseModel<?> response = cardInputBoundary.deleteCard(id);
+        return new ResponseEntity<>(response.getBody(), HttpStatus.valueOf(response.getCode()));
     }
 
     @DeleteMapping("/deleteByBoard/{id}")
-    void deleteCardsByBoard(@PathVariable Long id){
-        cardInputBoundary.deleteCardsByBoard(id);
-    }
-
-    @GetMapping("/cardExists/{id}")
-    boolean cardExists(@PathVariable Long id){
-        return cardInputBoundary.cardExists(id);
+    public ResponseEntity<?> deleteCardsByBoard(@PathVariable Long id) {
+        ResponseModel<?> response = cardInputBoundary.deleteCardsByBoard(id);
+        return new ResponseEntity<>(response.getBody(), HttpStatus.valueOf(response.getCode()));
     }
 }

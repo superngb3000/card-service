@@ -18,7 +18,7 @@ public class CardDtoModel {
     private Long boardId;
     private Long creatorId;
 
-    public static CardDtoModel mapper(Card card){
+    public static CardDtoModel mapper(Card card) {
         return new CardDtoModel(
                 card.getId(),
                 card.getName(),
@@ -26,7 +26,7 @@ public class CardDtoModel {
                 card.getCreatorId());
     }
 
-    public static List<CardDtoModel> mapper(List<Card> cardList){
+    public static List<CardDtoModel> mapper(List<Card> cardList) {
         return cardList.stream()
                 .map(CardDtoModel::mapper)
                 .toList();
