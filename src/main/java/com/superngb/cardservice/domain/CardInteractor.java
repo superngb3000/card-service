@@ -108,7 +108,7 @@ public class CardInteractor implements CardInputBoundary {
     public ResponseModel<?> deleteCardsByBoard(Long id) {
         List<Card> cardList = cardDataAccess.findCardsByBoardId(id);
         if (cardList == null){
-            return ResponseModel.builder().code(403).body("There are no cards with board with boardId = " + id.toString()).build();
+            return ResponseModel.builder().code(404).body("There are no cards with board with boardId = " + id.toString()).build();
         }
         cardList.forEach(card -> cardDataAccess.deleteById(card.getId()));
         return ResponseModel.builder().code(200).body(CardDtoModel.mapper(cardList)).build();
